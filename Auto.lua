@@ -33,27 +33,40 @@ end
 local togBuy = createBtn("Auto Buy", 15)
 local togLucky = createBtn("Lucky", 65)
 
--- Logic Lucky (วาร์ปหา Main ใน Normal และ Rainbow)
+-- ฟังก์ชันกดหน้าจอ 5 ครั้ง (ล่างซ้าย)
+local function clickScreenFiveTimes()
+    task.wait(0.5) -- รอหน้าต่างโชว์ของขึ้นมาแป๊บนึง
+    local screenWidth = workspace.CurrentCamera.ViewportSize.X
+    local screenHeight = workspace.CurrentCamera.ViewportSize.Y
+    
+    -- พิกัดล่างซ้าย (ประมาณ 10% ของความกว้าง และ 80% ของความสูงหน้าจอ)
+    local targetX = screenWidth * 0.1
+    local targetY = screenHeight * 0.8
+    
+    for i = 1, 5 do
+        VIM:SendMouseButtonEvent(targetX, targetY, 0, true, game, 0)
+        task.wait(0.05)
+        VIM:SendMouseButtonEvent(targetX, targetY, 0, false, game, 0)
+        task.wait(0.3) -- ความเร็วในการกดแต่ละครั้ง
+    end
+end
+
+-- Logic Lucky
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky then
             local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
             if not hrp then continue end
-            
             for _, obj in pairs(workspace:GetDescendants()) do
                 if not isLucky then break end
-                
-                -- เช็คเงื่อนไข: ชื่อ Main และ Parent ต้องเป็น Normal หรือ Rainbow
                 if obj.Name == "Main" and obj.Parent and (obj.Parent.Name == "Normal" or obj.Parent.Name == "Rainbow") then
                     local p = obj:FindFirstChildOfClass("ProximityPrompt")
                     if p then
                         hrp.CFrame = obj.CFrame * CFrame.new(0, 3, 0)
                         hrp.Velocity = Vector3.new(0,0,0)
-                        
                         p:InputHoldBegin()
-                        task.wait(3.1) -- กดค้างตามเงื่อนไข 3 วินาที
+                        task.wait(3.1)
                         p:InputHoldEnd()
-                        
                         fireproximityprompt(p)
                         task.wait(0.5)
                         break 
@@ -64,8 +77,8 @@ task.spawn(function()
     end
 end)
 
--- Logic Auto Buy (คงเดิม)
-local function click(x, y) VIM:SendMouseButtonEvent(x, y, 0, true, game, 0); task.wait(0.05); VIM:SendMouseButtonEvent(x, y, 0, false, game, 0) end
+-- Logic Auto Buy (แก้ไขให้กด 5 ครั้งหลังจากคลิกซื้อ)
+local function click(x, y) VIM:SendMouseButtonEvent(x, y, 0, true, game, 0); task.wait(0.4); VIM:SendMouseButtonEvent(x, y, 0, false, game, 0) end
 task.spawn(function()
     while true do task.wait(2)
         if isBuy then
@@ -75,7 +88,12 @@ task.spawn(function()
                 VIM:SendKeyEvent(true, 101, false, game); task.wait(0.05); VIM:SendKeyEvent(false, 101, false, game); task.wait(1.2)
                 for _, v in pairs(player.PlayerGui:GetDescendants()) do
                     if v:IsA("GuiButton") and v.Visible and v.Name:lower():find("buy") and v.Name:find("3") then
-                        click(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2 + 58); break
+                        -- กดปุ่มซื้อ
+                        click(v.AbsolutePosition.X + v.AbsoluteSize.X/2, v.AbsolutePosition.Y + v.AbsoluteSize.Y/2 + 58)
+                        
+                        -- เพิ่มการกด 5 ครั้งหลังจากซื้อเสร็จ
+                        task.spawn(clickScreenFiveTimes)
+                        task.wait (3)
                     end
                 end
             end
