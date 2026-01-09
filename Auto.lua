@@ -1,6 +1,7 @@
 local UniverseID = 123557829667240
 if game.GameId ~= UniverseID then 
-    return -- ถ้าไม่ใช่เกมนี้ สคริปต์จะไม่ทำงานเลย
+    warn("สคริปต์นี้ไม่รองรับเกมนี้! ID ของคุณคือ: "..game.GameId)
+    return 
 end
 
 local player = game.Players.LocalPlayer
@@ -10,7 +11,6 @@ local isBuy, isLucky, isHop, targetPos = false, false, false, Vector3.new(9.3, 1
 
 local fName = "MinMenuConfig.json"
 
--- ฟังก์ชัน Save/Load
 local function saveC()
     local data = {buy = isBuy, lucky = isLucky, hop = isHop}
     pcall(function() writefile(fName, Http:JSONEncode(data)) end)
@@ -24,12 +24,8 @@ local function loadC()
 end
 loadC()
 
--- [[ สร้าง UI ใหม่ให้แสดงผลแน่นอน ]]
-local sg = Instance.new("ScreenGui")
-sg.Name = "MinMenuSystem"
-sg.Parent = player:WaitForChild("PlayerGui")
-sg.ResetOnSpawn = false
-sg.DisplayOrder = 999999 -- ดันให้อยู่หน้าสุดของทุกอย่าง
+local sg = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+sg.Name = "MinMenuSystem"; sg.ResetOnSpawn = false; sg.DisplayOrder = 99999
 
 local function drag(obj)
     local dStart, sPos, dragging
@@ -38,43 +34,28 @@ local function drag(obj)
     obj.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 end
 
--- ปุ่ม MENU (วงกลม)
 local btn = Instance.new("TextButton", sg)
-btn.Size, btn.Position = UDim2.new(0, 50, 0, 50), UDim2.new(0, 20, 0, 20)
-btn.Text = "MENU"
-btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-btn.TextColor3 = Color3.new(1, 1, 1)
-btn.Font = Enum.Font.SourceSansBold
-btn.TextSize = 14
-local corner = Instance.new("UICorner", btn)
-corner.CornerRadius = UDim.new(1, 0)
-drag(btn)
+btn.Size, btn.Position, btn.Text = UDim2.new(0, 50, 0, 50), UDim2.new(0, 20, 0, 20), "MENU"
+btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); btn.TextColor3 = Color3.new(1, 1, 1); btn.ZIndex = 10
+Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0); drag(btn)
 
--- หน้าต่าง Frame
 local frm = Instance.new("Frame", sg)
-frm.Size, frm.Position = UDim2.new(0, 180, 0, 210), UDim2.new(0, 20, 0, 80)
-frm.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frm.Visible = false
-Instance.new("UICorner", frm)
-drag(frm)
+frm.Size, frm.Position, frm.Visible = UDim2.new(0, 180, 0, 210), UDim2.new(0, 20, 0, 80), false
+frm.BackgroundColor3 = Color3.fromRGB(25, 25, 25); frm.ZIndex = 9; Instance.new("UICorner", frm); drag(frm)
 
 local function createBtn(name, pos, val)
     local b = Instance.new("TextButton", frm)
     b.Size, b.Position = UDim2.new(0.9, 0, 0, 45), UDim2.new(0.05, 0, 0, pos)
     b.Text = name..": "..(val and "ON" or "OFF")
     b.BackgroundColor3 = val and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
-    b.TextColor3 = Color3.new(1, 1, 1)
-    b.Font = Enum.Font.SourceSansBold
-    b.TextSize = 16
-    Instance.new("UICorner", b)
-    return b
+    b.TextColor3, b.Font, b.TextSize = Color3.new(1, 1, 1), Enum.Font.SourceSansBold, 16
+    Instance.new("UICorner", b); return b
 end
 
 local tB = createBtn("Auto Buy", 15, isBuy)
 local tL = createBtn("Lucky", 75, isLucky)
 local tH = createBtn("Auto Hop LB", 135, isHop)
 
--- [[ ระบบ Hop 15 วินาที ]]
 local function Hop()
     if not isHop then return end
     local s, r = pcall(function() return Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data end)
@@ -94,17 +75,13 @@ task.spawn(function()
         if isHop then
             for i = 15, 1, -1 do 
                 if not isHop then break end
-                tH.Text = "Hop in: "..i.."s"
-                task.wait(1) 
+                tH.Text = "Hop in: "..i.."s"; task.wait(1) 
             end
             if isHop then Hop() end
-        else 
-            tH.Text = "Auto Hop LB: OFF" 
-        end
+        else tH.Text = "Auto Hop LB: OFF" end
     end
 end)
 
--- [[ LOGIC FARM ]]
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky and player.Character then
@@ -137,10 +114,7 @@ task.spawn(function()
     end
 end)
 
--- ปุ่มกดเปิด/ปิดเมนู
-btn.MouseButton1Click:Connect(function()
-    frm.Visible = not frm.Visible
-end)
+btn.MouseButton1Click:Connect(function() frm.Visible = not frm.Visible end)
 
 local function update(b, v, n) 
     b.Text = n..": "..(v and "ON" or "OFF")
