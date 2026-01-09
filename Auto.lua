@@ -86,7 +86,7 @@ task.spawn(function()
             VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
             task.wait(0.1)
             VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-            task.wait(1.2)
+            task.wait(1)
             
             -- 3. ค้นหาและกดปุ่ม Buy 3
             local hasBought = false
@@ -118,7 +118,7 @@ task.spawn(function()
                     task.wait(0.3) -- หน่วงเวลาการจิ้มแต่ละครั้ง
                 end
             end
-            task.wait(2.5) -- พักก่อนเริ่มรอบใหม่
+            task.wait(2) -- พักก่อนเริ่มรอบใหม่
         end
     end
 end)
