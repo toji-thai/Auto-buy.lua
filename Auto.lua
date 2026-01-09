@@ -40,21 +40,36 @@ local tL = createBtn("Lucky", 65, isLucky)
 local tH = createBtn("Auto Hop LB", 115, isHop)
 
 local function Hop()
-    local s, r = pcall(function() return Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100")).data end)
-    if s then for _, v in pairs(r) do if v.playing < v.maxPlayers and v.id ~= game.JobId then TS:TeleportToPlaceInstance(game.PlaceId, v.id, player) return end end end
-    task.wait(2); if isHop then Hop() end
+    if not isHop then return end
+    local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+    local s, r = pcall(function() return Http:JSONDecode(game:HttpGet(url)) end)
+    if s and r.data then
+        for _, v in pairs(r.data) do
+            if v.playing < v.maxPlayers and v.id ~= game.JobId then
+                TS:TeleportToPlaceInstance(game.PlaceId, v.id, player)
+                return
+            end
+        end
+    end
+    task.wait(3) if isHop then Hop() end
 end
 
 task.spawn(function()
     while true do task.wait(1)
         if isHop then
-            for i = 30, 1, -1 do if not isHop then break end; tH.Text = "Hop in: "..i.."s"; task.wait(1) end
+            for i = 15, 1, -1 do -- ปรับตรงนี้เป็น 15 วินาที
+                if not isHop then break end
+                tH.Text = "Hop in: "..i.."s"
+                task.wait(1) 
+            end
             if isHop then Hop() end
-        else tH.Text = "Auto Hop LB: OFF" end
+        else 
+            tH.Text = "Auto Hop LB: OFF" 
+        end
     end
 end)
 
--- LOGIC AUTO BUY / LUCKY
+-- Logic Auto Buy / Lucky เหมือนเดิม
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky and player.Character then
@@ -86,12 +101,3 @@ task.spawn(function()
         end
     end
 end)
-
-local lT = 0
-btn.MouseButton1Down:Connect(function() lT = tick() end)
-btn.MouseButton1Up:Connect(function() if tick()-lT < 0.2 then frm.Visible = not frm.Visible end end)
-
-local function update(b, v, n) b.Text = n..": "..(v and "ON" or "OFF"); b.BackgroundColor3 = v and Color3.new(0.2,0.7,0.2) or Color3.new(0.7,0.2,0.2); saveC() end
-tB.MouseButton1Click:Connect(function() isBuy = not isBuy; update(tB, isBuy, "Auto Buy") end)
-tL.MouseButton1Click:Connect(function() isLucky = not isLucky; update(tL, isLucky, "Lucky") end)
-tH.MouseButton1Click:Connect(function() isHop = not isHop; update(tH, isHop, "Auto Hop LB") end)
