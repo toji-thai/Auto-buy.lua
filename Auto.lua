@@ -1,3 +1,9 @@
+local TargetID = 123557829667240
+if game.GameId ~= TargetID and game.PlaceId ~= TargetID then 
+    warn("สคริปต์นี้ไม่รองรับเกมนี้ (ID ไม่ถูกต้อง)")
+    return 
+end
+
 local player = game.Players.LocalPlayer
 local UIS, VIM = game:GetService("UserInputService"), game:GetService("VirtualInputManager")
 local TS, Http = game:GetService("TeleportService"), game:GetService("HttpService")
@@ -19,7 +25,7 @@ end
 
 loadC()
 
-local sg = Instance.new("ScreenGui", player.PlayerGui); sg.Name = "MinMenu"; sg.ResetOnSpawn = false
+local sg = Instance.new("ScreenGui", player.PlayerGui); sg.Name = "MinMenu"; sg.ResetOnSpawn = false; sg.DisplayOrder = 999
 local function drag(obj)
     local dStart, sPos, dragging
     obj.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging, dStart, sPos = true, i.Position, obj.Position end end)
@@ -27,18 +33,19 @@ local function drag(obj)
     obj.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 end
 
-local btn = Instance.new("TextButton", sg); btn.Size, btn.Position, btn.Text, btn.BackgroundColor3 = UDim2.new(0,60,0,60), UDim2.new(0,10,0,10), "MENU", Color3.new(0.2,0.2,0.2); Instance.new("UICorner", btn).CornerRadius = UDim.new(1,0); drag(btn)
-local frm = Instance.new("Frame", sg); frm.Size, frm.Position, frm.Visible, frm.BackgroundColor3 = UDim2.new(0,180,0,200), UDim2.new(0,10,0,80), false, Color3.new(0.1,0.1,0.1); Instance.new("UICorner", frm); drag(frm)
+local btn = Instance.new("TextButton", sg); btn.Size, btn.Position, btn.Text, btn.BackgroundColor3 = UDim2.new(0,60,0,60), UDim2.new(0,10,0,10), "MENU", Color3.new(0.2,0.2,0.2); Instance.new("UICorner", btn).CornerRadius = UDim.new(1,0); btn.ZIndex = 10; drag(btn)
+local frm = Instance.new("Frame", sg); frm.Size, frm.Position, frm.Visible, frm.BackgroundColor3 = UDim2.new(0,180,0,200), UDim2.new(0,10,0,80), false, Color3.new(0.1,0.1,0.1); Instance.new("UICorner", frm); frm.ZIndex = 9; drag(frm)
 
 local function createBtn(name, pos, val)
     local b = Instance.new("TextButton", frm); b.Size, b.Position = UDim2.new(0.8,0,0,40), UDim2.new(0.1,0,0,pos)
-    b.Text = name..": "..(val and "ON" or "OFF"); b.BackgroundColor3 = val and Color3.new(0.2,0.7,0.2) or Color3.new(0.7,0.2,0.2); Instance.new("UICorner", b); return b
+    b.Text = name..": "..(val and "ON" or "OFF"); b.BackgroundColor3 = val and Color3.new(0.2,0.7,0.2) or Color3.new(0.7,0.2,0.2); Instance.new("UICorner", b); b.ZIndex = 11; return b
 end
 
 local tB = createBtn("Auto Buy", 15, isBuy)
 local tL = createBtn("Lucky", 65, isLucky)
 local tH = createBtn("Auto Hop LB", 115, isHop)
 
+-- ระบบ Hop (15 วินาที)
 local function Hop()
     if not isHop then return end
     local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
@@ -57,19 +64,17 @@ end
 task.spawn(function()
     while true do task.wait(1)
         if isHop then
-            for i = 15, 1, -1 do -- ปรับตรงนี้เป็น 15 วินาที
+            for i = 15, 1, -1 do 
                 if not isHop then break end
                 tH.Text = "Hop in: "..i.."s"
                 task.wait(1) 
             end
             if isHop then Hop() end
-        else 
-            tH.Text = "Auto Hop LB: OFF" 
-        end
+        else tH.Text = "Auto Hop LB: OFF" end
     end
 end)
 
--- Logic Auto Buy / Lucky เหมือนเดิม
+-- Logic Farm
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky and player.Character then
@@ -101,3 +106,12 @@ task.spawn(function()
         end
     end
 end)
+
+btn.MouseButton1Click:Connect(function()
+    frm.Visible = not frm.Visible
+end)
+
+local function update(b, v, n) b.Text = n..": "..(v and "ON" or "OFF"); b.BackgroundColor3 = v and Color3.new(0.2,0.7,0.2) or Color3.new(0.7,0.2,0.2); saveC() end
+tB.MouseButton1Click:Connect(function() isBuy = not isBuy; update(tB, isBuy, "Auto Buy") end)
+tL.MouseButton1Click:Connect(function() isLucky = not isLucky; update(tL, isLucky, "Lucky") end)
+tH.MouseButton1Click:Connect(function() isHop = not isHop; update(tH, isHop, "Auto Hop LB") end)
