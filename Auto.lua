@@ -1,6 +1,6 @@
-local UniverseID = 123557829667240
-if game.GameId ~= UniverseID then 
-    warn("สคริปต์นี้ไม่รองรับเกมนี้! ID ของคุณคือ: "..game.GameId)
+local TargetID = 9228045253
+if game.GameId ~= TargetID and game.PlaceId ~= TargetID then 
+    warn("สคริปต์นี้ไม่รองรับเกมนี้! ID ของคุณคือ: "..game.PlaceId)
     return 
 end
 
@@ -24,6 +24,7 @@ local function loadC()
 end
 loadC()
 
+-- [[ สร้าง UI แบบเน้นการมองเห็น ]]
 local sg = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 sg.Name = "MinMenuSystem"; sg.ResetOnSpawn = false; sg.DisplayOrder = 99999
 
@@ -34,28 +35,43 @@ local function drag(obj)
     obj.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 end
 
+-- ปุ่ม MENU หลัก
 local btn = Instance.new("TextButton", sg)
-btn.Size, btn.Position, btn.Text = UDim2.new(0, 50, 0, 50), UDim2.new(0, 20, 0, 20), "MENU"
-btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); btn.TextColor3 = Color3.new(1, 1, 1); btn.ZIndex = 10
-Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0); drag(btn)
+btn.Size, btn.Position, btn.Text = UDim2.new(0, 60, 0, 60), UDim2.new(0, 20, 0, 20), "OPEN"
+btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+btn.TextColor3 = Color3.new(1, 1, 1)
+btn.Font = Enum.Font.SourceSansBold
+btn.TextSize = 18
+btn.ZIndex = 100
+Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+drag(btn)
 
+-- หน้าต่างเมนู (พื้นหลังสีเทาเข้มเพื่อให้เห็นปุ่มชัด)
 local frm = Instance.new("Frame", sg)
-frm.Size, frm.Position, frm.Visible = UDim2.new(0, 180, 0, 210), UDim2.new(0, 20, 0, 80), false
-frm.BackgroundColor3 = Color3.fromRGB(25, 25, 25); frm.ZIndex = 9; Instance.new("UICorner", frm); drag(frm)
+frm.Size, frm.Position, frm.Visible = UDim2.new(0, 200, 0, 220), UDim2.new(0, 20, 0, 90), false
+frm.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+frm.ZIndex = 90
+Instance.new("UICorner", frm)
+drag(frm)
 
 local function createBtn(name, pos, val)
     local b = Instance.new("TextButton", frm)
-    b.Size, b.Position = UDim2.new(0.9, 0, 0, 45), UDim2.new(0.05, 0, 0, pos)
+    b.Size, b.Position = UDim2.new(0.9, 0, 0, 50), UDim2.new(0.05, 0, 0, pos)
     b.Text = name..": "..(val and "ON" or "OFF")
-    b.BackgroundColor3 = val and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
-    b.TextColor3, b.Font, b.TextSize = Color3.new(1, 1, 1), Enum.Font.SourceSansBold, 16
-    Instance.new("UICorner", b); return b
+    b.BackgroundColor3 = val and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
+    b.TextColor3 = Color3.new(1, 1, 1) -- ตัวหนังสือสีขาว
+    b.Font = Enum.Font.SourceSansBold
+    b.TextSize = 18
+    b.ZIndex = 95 -- มั่นใจว่าอยู่เหนือ Frame
+    Instance.new("UICorner", b)
+    return b
 end
 
 local tB = createBtn("Auto Buy", 15, isBuy)
-local tL = createBtn("Lucky", 75, isLucky)
-local tH = createBtn("Auto Hop LB", 135, isHop)
+local tL = createBtn("Lucky", 80, isLucky)
+local tH = createBtn("Auto Hop LB", 145, isHop)
 
+-- [[ ระบบต่างๆ ]]
 local function Hop()
     if not isHop then return end
     local s, r = pcall(function() return Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data end)
@@ -118,7 +134,7 @@ btn.MouseButton1Click:Connect(function() frm.Visible = not frm.Visible end)
 
 local function update(b, v, n) 
     b.Text = n..": "..(v and "ON" or "OFF")
-    b.BackgroundColor3 = v and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    b.BackgroundColor3 = v and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
     saveC() 
 end
 
