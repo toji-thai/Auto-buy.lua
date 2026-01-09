@@ -8,9 +8,9 @@ local isBuy, isLucky, isHop, targetPos = false, false, false, Vector3.new(9.3, 1
 
 local fName = "MinMenuConfig.json"
 local globalFile = "UsedServers.json"
-local myToken = tostring(math.random(100000, 999999)) -- Token ระบุตัวตนรหัส
+local myToken = tostring(math.random(100000, 999999)) 
 
--- ระบบจัดการไฟล์กลาง (กันรหัสซ้ำ)
+-- ระบบจัดการไฟล์กลาง
 local function getUsedServers()
     if isfile(globalFile) then
         local s, res = pcall(function() return Http:JSONDecode(readfile(globalFile)) end)
@@ -28,7 +28,7 @@ local function markServerUsed()
     pcall(function() writefile(globalFile, Http:JSONEncode(used)) end)
 end
 
-markServerUsed() -- จองเซิร์ฟทันทีที่เข้า
+markServerUsed()
 
 local function saveC()
     local data = {buy = isBuy, lucky = isLucky, hop = isHop}
@@ -110,7 +110,7 @@ task.spawn(function()
     end
 end)
 
--- [[ LOGIC FARM ]]
+-- [[ LOGIC FARM LUCKY ]]
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky and player.Character then
@@ -128,53 +128,43 @@ task.spawn(function()
     end
 end)
 
--- [[ AUTO BUY + CLICK CONFIRM ]]
+-- [[ NEW AUTO BUY SYSTEM (FORCE CLICK) ]]
 task.spawn(function()
     while true do task.wait(2)
         if isBuy and player.Character:FindFirstChild("HumanoidRootPart") then
+            -- 1. ย้ายตัวไปจุดซื้อ
             player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos); task.wait(0.5)
             
-            -- กด E เปิดร้านค้า
-            VIM:SendKeyEvent(true, 101, false, game); task.wait(0.05); VIM:SendKeyEvent(false, 101, false, game); task.wait(1.5)
+            -- 2. กด E เปิดหน้าต่างซื้อ
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game); task.wait(0.1); VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            task.wait(1.5)
             
+            -- 3. ค้นหาและกดปุ่ม Buy 3 เพื่อเริ่มสุ่ม
+            local hasBought = false
             for _, v in pairs(player.PlayerGui:GetDescendants()) do
                 if v:IsA("GuiButton") and v.Visible and v.Name:lower():find("buy") and v.Name:find("3") then
                     local p = v.AbsolutePosition
-                    local centerX = p.X + v.AbsoluteSize.X / 2
-                    local centerY = p.Y + v.AbsoluteSize.Y / 2 + 58
-                    
-                    -- คลิก Buy 3
-                    VIM:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0); task.wait(0.1)
-                    VIM:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
-                    
-                    task.wait(1.2) -- รอหน้าต่างสุ่มขึ้น
-                    
-                    -- กดซ้ายล่าง 5 ครั้ง (สแกนหาปุ่มในโซนซ้ายล่าง)
-                    for i = 1, 5 do
-                        if not isBuy then break end
-                        local clicked = false
-                        for _, confirmBtn in pairs(player.PlayerGui:GetDescendants()) do
-                            if confirmBtn:IsA("GuiButton") and confirmBtn.Visible then
-                                local pos = confirmBtn.AbsolutePosition
-                                if pos.X < 500 and pos.Y > 400 then -- เช็คตำแหน่งซ้ายล่าง
-                                    local cX = pos.X + confirmBtn.AbsoluteSize.X / 2
-                                    local cY = pos.Y + confirmBtn.AbsoluteSize.Y / 2 + 58
-                                    VIM:SendMouseButtonEvent(cX, cY, 0, true, game, 0); task.wait(0.05)
-                                    VIM:SendMouseButtonEvent(cX, cY, 0, false, game, 0)
-                                    clicked = true; break
-                                end
-                            end
-                        end
-                        if not clicked then -- ถ้าหาปุ่มไม่เจอ ให้กดพิกัดดิบ
-                            VIM:SendMouseButtonEvent(100, 800, 0, true, game, 0); task.wait(0.05)
-                            VIM:SendMouseButtonEvent(100, 800, 0, false, game, 0)
-                        end
-                        task.wait(0.4)
-                    end
-                    task.wait(2)
-                    break 
+                    local cX, cY = p.X + v.AbsoluteSize.X/2, p.Y + v.AbsoluteSize.Y/2 + 58
+                    VIM:SendMouseButtonEvent(cX, cY, 0, true, game, 0); task.wait(0.1)
+                    VIM:SendMouseButtonEvent(cX, cY, 0, false, game, 0)
+                    hasBought = true
+                    break
                 end
             end
+            
+            -- 4. ถ้ากดซื้อแล้ว ให้บังคับจิ้มพิกัดซ้ายล่าง 5 ครั้งทันที
+            if hasBought then
+                task.wait(1) -- รอหน้าต่างเด้ง
+                for i = 1, 5 do
+                    if not isBuy then break end
+                    -- จิ้มพิกัดหน้าจอซ้ายล่าง (X: 150, Y: 800) ไม่ต้องเช็คชื่อปุ่ม
+                    VIM:SendMouseButtonEvent(150, 800, 0, true, game, 0)
+                    task.wait(0.05)
+                    VIM:SendMouseButtonEvent(150, 800, 0, false, game, 0)
+                    task.wait(0.3) -- ความเร็วการกด 5 ครั้ง
+                end
+            end
+            task.wait(3)
         end
     end
 end)
