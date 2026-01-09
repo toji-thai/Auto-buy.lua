@@ -8,7 +8,7 @@ local isBuy, isLucky, isHop, targetPos = false, false, false, Vector3.new(9.3, 1
 
 local fName = "MinMenuConfig.json"
 local globalFile = "UsedServers.json"
-local myToken = tostring(math.random(100000, 999999)) -- Token ระบุตัวตนรหัส
+local myToken = tostring(math.random(100000, 999999))
 
 -- ระบบจัดการไฟล์กลาง (กันรหัสซ้ำ)
 local function getUsedServers()
@@ -23,12 +23,12 @@ local function markServerUsed()
     local used = getUsedServers()
     used[game.JobId] = {time = os.time(), token = myToken}
     for id, data in pairs(used) do
-        if type(data) == "table" and os.time() - data.time > 480 then used[id] = nil end
+        if type(data) == "table" and os.time() - data.time > 300 then used[id] = nil end
     end
     pcall(function() writefile(globalFile, Http:JSONEncode(used)) end)
 end
 
-markServerUsed() -- จองเซิร์ฟทันทีที่เข้า
+markServerUsed()
 
 local function saveC()
     local data = {buy = isBuy, lucky = isLucky, hop = isHop}
@@ -46,23 +46,19 @@ loadC()
 -- [[ UI SYSTEM ]]
 local sg = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 sg.Name = "MinMenuSystem"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
-
 local function drag(obj)
     local dStart, sPos, dragging
     obj.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging, dStart, sPos = true, i.Position, obj.Position end end)
     UIS.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local d = i.Position - dStart; obj.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X, sPos.Y.Scale, sPos.Y.Offset + d.Y) end end)
     obj.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 end
-
 local btn = Instance.new("TextButton", sg)
 btn.Size, btn.Position, btn.Text = UDim2.new(0, 60, 0, 60), UDim2.new(0, 20, 0, 20), "OPEN"
 btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60); btn.TextColor3 = Color3.new(1, 1, 1); btn.Font = Enum.Font.SourceSansBold; btn.TextSize = 18; btn.ZIndex = 100
 Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0); drag(btn)
-
 local frm = Instance.new("Frame", sg)
 frm.Size, frm.Position, frm.Visible = UDim2.new(0, 200, 0, 220), UDim2.new(0, 20, 0, 90), false
 frm.BackgroundColor3 = Color3.fromRGB(35, 35, 35); frm.ZIndex = 90; Instance.new("UICorner", frm); drag(frm)
-
 local function createBtn(name, pos, val)
     local b = Instance.new("TextButton", frm)
     b.Size, b.Position = UDim2.new(0.9, 0, 0, 50), UDim2.new(0.05, 0, 0, pos)
@@ -71,32 +67,37 @@ local function createBtn(name, pos, val)
     b.TextColor3, b.Font, b.TextSize, b.ZIndex = Color3.new(1, 1, 1), Enum.Font.SourceSansBold, 18, 95
     Instance.new("UICorner", b); return b
 end
-
 local tB = createBtn("Auto Buy", 15, isBuy); local tL = createBtn("Lucky", 80, isLucky); local tH = createBtn("Auto Hop LB", 145, isHop)
 
--- [[ ระบบ Hop ทุก 20 วินาที และกันแย่ง ]]
+-- [[ ระบบ Hop ทุก 25 วินาที + ป้องกัน 4 ไอดีเจอกัน ]]
 local function Hop()
     if not isHop then return end
     markServerUsed()
     
-    -- สุ่มเวลาพักก่อนหาเซิร์ฟใหม่ (ป้องกันการส่งคำขอพร้อมกัน)
-    task.wait(math.random(10, 50) / 10) 
+    -- สุ่มรอเพิ่มขึ้น (1-10 วินาที) เพื่อไม่ให้ชนกัน
+    task.wait(math.random(10, 100) / 10) 
     
     local used = getUsedServers()
-    local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+    local cursor = ""
+    if math.random(1,3) == 1 then cursor = "&cursor=eyJwYWdlIjoyfQ==" end -- สุ่มไปหน้า 2 บ้าง
+    
+    local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"..cursor
     local s, r = pcall(function() return Http:JSONDecode(game:HttpGet(url)) end)
     
     if s and r.data then
         local servers = r.data
-        -- สุ่มลำดับรายการเซิร์ฟเวอร์
         for i = #servers, 2, -1 do
             local j = math.random(i)
             servers[i], servers[j] = servers[j], servers[i]
         end
 
         for _, v in pairs(servers) do
-            -- เงื่อนไข: คนไม่เต็ม, ไม่ใช่เซิร์ฟเดิม, และไม่มีใครใน 4 รหัสจองไว้
-            if v.playing < v.maxPlayers and v.id ~= game.JobId and not used[v.id] then
+            -- เช็คละเอียด เผื่อที่ไว้ 1 ที่เสมอ
+            if v.playing < (v.maxPlayers - 1) and v.id ~= game.JobId and not used[v.id] then
+                -- จองก่อนไป
+                used[v.id] = {time = os.time(), token = "PRE"}
+                pcall(function() writefile(globalFile, Http:JSONEncode(used)) end)
+                
                 TS:TeleportToPlaceInstance(game.PlaceId, v.id, player)
                 return
             end
@@ -108,7 +109,7 @@ end
 task.spawn(function()
     while true do task.wait(1)
         if isHop then
-            for i = 20, 1, -1 do -- ปรับเป็น 20 วินาทีตามต้องการ
+            for i = 25, 1, -1 do -- เปลี่ยนเป็น 25 วินาที
                 if not isHop then break end
                 tH.Text = "Hop in: "..i.."s"; task.wait(1) 
             end
@@ -117,7 +118,7 @@ task.spawn(function()
     end
 end)
 
--- [[ LOGIC FARM ]]
+-- [[ LOGIC FARM (เหมือนเดิม) ]]
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky and player.Character then
