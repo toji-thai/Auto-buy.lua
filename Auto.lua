@@ -43,6 +43,33 @@ local function loadC()
 end
 loadC()
 
+-- [[ ระบบ Hop (เพิ่มกลับมาให้ใหม่) ]]
+local function Hop()
+    if not isHop then return end
+    markServerUsed()
+    task.wait(1) 
+    local used = getUsedServers()
+    local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+    local s, r = pcall(function() return Http:JSONDecode(game:HttpGet(url)) end)
+    if s and r.data then
+        local servers = r.data
+        -- สุ่มลำดับเซิร์ฟเวอร์
+        for i = #servers, 2, -1 do
+            local j = math.random(i)
+            servers[i], servers[j] = servers[j], servers[i]
+        end
+        for _, v in pairs(servers) do
+            if v.playing < v.maxPlayers and v.id ~= game.JobId and not used[v.id] then
+                TS:TeleportToPlaceInstance(game.PlaceId, v.id, player)
+                return
+            end
+        end
+    end
+    -- ถ้าหาเซิร์ฟเวอร์ไม่ได้ ให้รอแล้วลองใหม่
+    task.wait(5)
+    if isHop then Hop() end
+end
+
 -- [[ UI SYSTEM ]]
 local sg = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 sg.Name = "MinMenuSystem"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
@@ -74,27 +101,41 @@ end
 
 local tB = createBtn("Auto Buy", 15, isBuy); local tL = createBtn("Lucky", 80, isLucky); local tH = createBtn("Auto Hop LB", 145, isHop)
 
+-- [[ ลูปนับถอยหลัง Hop 25 วินาที ]]
+task.spawn(function()
+    while true do task.wait(1)
+        if isHop then
+            for i = 25, 1, -1 do -- ปรับเป็น 25 วินาที
+                if not isHop then break end
+                tH.Text = "Hop in: "..i.."s"
+                task.wait(1) 
+            end
+            if isHop then 
+                tH.Text = "Hopping..."
+                Hop() -- เรียกฟังก์ชันวาร์ป
+            end
+        else 
+            tH.Text = "Auto Hop LB: OFF" 
+        end
+    end
+end)
+
 -- [[ LOGIC: AUTO BUY & CLICK ]]
 task.spawn(function()
     while true do task.wait(1.5)
         if isBuy and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            -- 1. ย้ายตัวไปจุดซื้อ
             player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos)
             task.wait(0.5)
-            
-            -- 2. กด E เพื่อเปิดเมนู
             VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
             task.wait(0.1)
             VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
             task.wait(1)
             
-            -- 3. ค้นหาและกดปุ่ม Buy 3
             local hasBought = false
             for _, v in pairs(player.PlayerGui:GetDescendants()) do
                 if v:IsA("GuiButton") and v.Visible and v.Name:lower():find("buy") and v.Name:find("3") then
                     local p = v.AbsolutePosition
                     local s = v.AbsoluteSize
-                    -- คลิกกลางปุ่ม Buy 3
                     VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, true, game, 0)
                     task.wait(0.1)
                     VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, false, game, 0)
@@ -103,27 +144,25 @@ task.spawn(function()
                 end
             end
             
-            -- 4. ถ้าซื้อแล้ว ให้กดมุมซ้ายล่าง 5 ครั้ง (คำนวณตามขนาดหน้าต่างจริง)
             if hasBought then
-                task.wait(1) -- รอหน้าต่างเด้ง
-                local screenSize = sg.AbsoluteSize -- ดึงขนาดหน้าต่างเกมปัจจุบัน
-                local clickX = screenSize.X * 0.15 -- 15% จากขอบซ้าย
-                local clickY = screenSize.Y * 0.88 -- 88% จากขอบบน (เกือบถึงล่างสุด)
-
+                task.wait(1)
+                local screenSize = sg.AbsoluteSize 
+                local clickX = screenSize.X * 0.15
+                local clickY = screenSize.Y * 0.88
                 for i = 1, 5 do
                     if not isBuy then break end
                     VIM:SendMouseButtonEvent(clickX, clickY + 58, 0, true, game, 0)
                     task.wait(0.1)
                     VIM:SendMouseButtonEvent(clickX, clickY + 58, 0, false, game, 0)
-                    task.wait(0.3) -- หน่วงเวลาการจิ้มแต่ละครั้ง
+                    task.wait(0.3)
                 end
             end
-            task.wait(2) -- พักก่อนเริ่มรอบใหม่
+            task.wait(2)
         end
     end
 end)
 
--- [[ LOGIC: LUCKY FARM & HOP ]]
+-- [[ LOGIC: LUCKY FARM ]]
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
