@@ -7,28 +7,28 @@ local TS, Http = game:GetService("TeleportService"), game:GetService("HttpServic
 local isBuy, isLucky, isHop, targetPos = false, false, false, Vector3.new(9.3, 19.92, -37.65)
 
 local fName = "MinMenuConfig.json"
-local globalFile = "UsedServers.json" -- ไฟล์กลางสำหรับแชร์ข้อมูลระหว่างไอดี
+local globalFile = "UsedServers.json"
+local myToken = tostring(math.random(100000, 999999)) -- Token ระบุตัวตนรหัส
 
--- ฟังก์ชันจัดการข้อมูลเซิร์ฟเวอร์ที่ถูกใช้แล้ว
+-- ระบบจัดการไฟล์กลาง (กันรหัสซ้ำ)
 local function getUsedServers()
     if isfile(globalFile) then
-        return Http:JSONDecode(readfile(globalFile)) or {}
+        local s, res = pcall(function() return Http:JSONDecode(readfile(globalFile)) end)
+        return s and res or {}
     end
     return {}
 end
 
 local function markServerUsed()
     local used = getUsedServers()
-    used[game.JobId] = os.time()
-    -- ล้างข้อมูลเก่า (เกิน 10 นาที) เพื่อไม่ให้ไฟล์ใหญ่เกินไป
-    for id, t in pairs(used) do
-        if os.time() - t > 600 then used[id] = nil end
+    used[game.JobId] = {time = os.time(), token = myToken}
+    for id, data in pairs(used) do
+        if type(data) == "table" and os.time() - data.time > 480 then used[id] = nil end
     end
-    writefile(globalFile, Http:JSONEncode(used))
+    pcall(function() writefile(globalFile, Http:JSONEncode(used)) end)
 end
 
--- บันทึกว่าไอดีนี้จองเซิร์ฟนี้แล้ว
-markServerUsed()
+markServerUsed() -- จองเซิร์ฟทันทีที่เข้า
 
 local function saveC()
     local data = {buy = isBuy, lucky = isLucky, hop = isHop}
@@ -43,7 +43,7 @@ local function loadC()
 end
 loadC()
 
--- [[ UI SYSTEM - เหมือนเดิมแต่ปรับ ZIndex ให้ชัวร์ ]]
+-- [[ UI SYSTEM ]]
 local sg = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 sg.Name = "MinMenuSystem"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
 
@@ -72,33 +72,43 @@ local function createBtn(name, pos, val)
     Instance.new("UICorner", b); return b
 end
 
-local tB = createBtn("Auto Buy", 15, isBuy)
-local tL = createBtn("Lucky", 80, isLucky)
-local tH = createBtn("Auto Hop LB", 145, isHop)
+local tB = createBtn("Auto Buy", 15, isBuy); local tL = createBtn("Lucky", 80, isLucky); local tH = createBtn("Auto Hop LB", 145, isHop)
 
--- [[ ระบบ Hop แบบป้องกันไอดีซ้ำเซิร์ฟ ]]
+-- [[ ระบบ Hop ทุก 20 วินาที และกันแย่ง ]]
 local function Hop()
     if not isHop then return end
+    markServerUsed()
+    
+    -- สุ่มเวลาพักก่อนหาเซิร์ฟใหม่ (ป้องกันการส่งคำขอพร้อมกัน)
+    task.wait(math.random(10, 50) / 10) 
+    
     local used = getUsedServers()
     local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
     local s, r = pcall(function() return Http:JSONDecode(game:HttpGet(url)) end)
     
     if s and r.data then
-        for _, v in pairs(r.data) do
-            -- เช็คว่าเซิร์ฟเวอร์นี้มีไอดีอื่นใช้อยู่หรือไม่
+        local servers = r.data
+        -- สุ่มลำดับรายการเซิร์ฟเวอร์
+        for i = #servers, 2, -1 do
+            local j = math.random(i)
+            servers[i], servers[j] = servers[j], servers[i]
+        end
+
+        for _, v in pairs(servers) do
+            -- เงื่อนไข: คนไม่เต็ม, ไม่ใช่เซิร์ฟเดิม, และไม่มีใครใน 4 รหัสจองไว้
             if v.playing < v.maxPlayers and v.id ~= game.JobId and not used[v.id] then
                 TS:TeleportToPlaceInstance(game.PlaceId, v.id, player)
                 return
             end
         end
     end
-    task.wait(2) if isHop then Hop() end
+    task.wait(5) if isHop then Hop() end
 end
 
 task.spawn(function()
     while true do task.wait(1)
         if isHop then
-            for i = 15, 1, -1 do 
+            for i = 20, 1, -1 do -- ปรับเป็น 20 วินาทีตามต้องการ
                 if not isHop then break end
                 tH.Text = "Hop in: "..i.."s"; task.wait(1) 
             end
@@ -142,9 +152,7 @@ end)
 
 btn.MouseButton1Click:Connect(function() frm.Visible = not frm.Visible end)
 local function update(b, v, n) 
-    b.Text = n..": "..(v and "ON" or "OFF")
-    b.BackgroundColor3 = v and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
-    saveC() 
+    b.Text = n..": "..(v and "ON" or "OFF"); b.BackgroundColor3 = v and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60); saveC() 
 end
 tB.MouseButton1Click:Connect(function() isBuy = not isBuy; update(tB, isBuy, "Auto Buy") end)
 tL.MouseButton1Click:Connect(function() isLucky = not isLucky; update(tL, isLucky, "Lucky") end)
