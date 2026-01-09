@@ -10,7 +10,7 @@ local fName = "MinMenuConfig.json"
 local globalFile = "UsedServers.json"
 local myToken = tostring(math.random(100000, 999999)) 
 
--- ระบบจัดการไฟล์กลาง
+-- [[ SYSTEM FUNCTIONS ]]
 local function getUsedServers()
     if isfile(globalFile) then
         local s, res = pcall(function() return Http:JSONDecode(readfile(globalFile)) end)
@@ -74,97 +74,67 @@ end
 
 local tB = createBtn("Auto Buy", 15, isBuy); local tL = createBtn("Lucky", 80, isLucky); local tH = createBtn("Auto Hop LB", 145, isHop)
 
--- [[ ระบบ Hop ]]
-local function Hop()
-    if not isHop then return end
-    markServerUsed()
-    task.wait(math.random(10, 50) / 10) 
-    local used = getUsedServers()
-    local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
-    local s, r = pcall(function() return Http:JSONDecode(game:HttpGet(url)) end)
-    if s and r.data then
-        local servers = r.data
-        for i = #servers, 2, -1 do
-            local j = math.random(i)
-            servers[i], servers[j] = servers[j], servers[i]
-        end
-        for _, v in pairs(servers) do
-            if v.playing < v.maxPlayers and v.id ~= game.JobId and not used[v.id] then
-                TS:TeleportToPlaceInstance(game.PlaceId, v.id, player)
-                return
-            end
-        end
-    end
-    task.wait(5) if isHop then Hop() end
-end
-
+-- [[ LOGIC: AUTO BUY & CLICK ]]
 task.spawn(function()
-    while true do task.wait(1)
-        if isHop then
-            for i = 20, 1, -1 do
-                if not isHop then break end
-                tH.Text = "Hop in: "..i.."s"; task.wait(1) 
-            end
-            if isHop then Hop() end
-        else tH.Text = "Auto Hop LB: OFF" end
-    end
-end)
-
--- [[ LOGIC FARM LUCKY ]]
-task.spawn(function()
-    while true do task.wait(0.5)
-        if isLucky and player.Character then
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                for _, o in pairs(workspace:GetDescendants()) do
-                    if not isLucky then break end
-                    if o.Name == "Main" and o.Parent and (o.Parent.Name == "Normal" or o.Parent.Name == "Rainbow") then
-                        local p = o:FindFirstChildOfClass("ProximityPrompt")
-                        if p then hrp.CFrame = o.CFrame * CFrame.new(0,3,0); p:InputHoldBegin(); task.wait(3.1); p:InputHoldEnd(); fireproximityprompt(p); break end
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- [[ NEW AUTO BUY SYSTEM (FORCE CLICK) ]]
-task.spawn(function()
-    while true do task.wait(2)
-        if isBuy and player.Character:FindFirstChild("HumanoidRootPart") then
+    while true do task.wait(1.5)
+        if isBuy and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             -- 1. ย้ายตัวไปจุดซื้อ
-            player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos); task.wait(0.5)
+            player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos)
+            task.wait(0.5)
             
-            -- 2. กด E เปิดหน้าต่างซื้อ
-            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game); task.wait(0.1); VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-            task.wait(1.5)
+            -- 2. กด E เพื่อเปิดเมนู
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            task.wait(0.1)
+            VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            task.wait(1.2)
             
-            -- 3. ค้นหาและกดปุ่ม Buy 3 เพื่อเริ่มสุ่ม
+            -- 3. ค้นหาและกดปุ่ม Buy 3
             local hasBought = false
             for _, v in pairs(player.PlayerGui:GetDescendants()) do
                 if v:IsA("GuiButton") and v.Visible and v.Name:lower():find("buy") and v.Name:find("3") then
                     local p = v.AbsolutePosition
-                    local cX, cY = p.X + v.AbsoluteSize.X/2, p.Y + v.AbsoluteSize.Y/2 + 58
-                    VIM:SendMouseButtonEvent(cX, cY, 0, true, game, 0); task.wait(0.1)
-                    VIM:SendMouseButtonEvent(cX, cY, 0, false, game, 0)
+                    local s = v.AbsoluteSize
+                    -- คลิกกลางปุ่ม Buy 3
+                    VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, true, game, 0)
+                    task.wait(0.1)
+                    VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, false, game, 0)
                     hasBought = true
                     break
                 end
             end
             
-            -- 4. ถ้ากดซื้อแล้ว ให้บังคับจิ้มพิกัดซ้ายล่าง 5 ครั้งทันที
+            -- 4. ถ้าซื้อแล้ว ให้กดมุมซ้ายล่าง 5 ครั้ง (คำนวณตามขนาดหน้าต่างจริง)
             if hasBought then
                 task.wait(1) -- รอหน้าต่างเด้ง
+                local screenSize = sg.AbsoluteSize -- ดึงขนาดหน้าต่างเกมปัจจุบัน
+                local clickX = screenSize.X * 0.15 -- 15% จากขอบซ้าย
+                local clickY = screenSize.Y * 0.88 -- 88% จากขอบบน (เกือบถึงล่างสุด)
+
                 for i = 1, 5 do
                     if not isBuy then break end
-                    -- จิ้มพิกัดหน้าจอซ้ายล่าง (X: 150, Y: 800) ไม่ต้องเช็คชื่อปุ่ม
-                    VIM:SendMouseButtonEvent(150, 800, 0, true, game, 0)
-                    task.wait(0.05)
-                    VIM:SendMouseButtonEvent(150, 800, 0, false, game, 0)
-                    task.wait(0.3) -- ความเร็วการกด 5 ครั้ง
+                    VIM:SendMouseButtonEvent(clickX, clickY + 58, 0, true, game, 0)
+                    task.wait(0.1)
+                    VIM:SendMouseButtonEvent(clickX, clickY + 58, 0, false, game, 0)
+                    task.wait(0.3) -- หน่วงเวลาการจิ้มแต่ละครั้ง
                 end
             end
-            task.wait(3)
+            task.wait(2.5) -- พักก่อนเริ่มรอบใหม่
+        end
+    end
+end)
+
+-- [[ LOGIC: LUCKY FARM & HOP ]]
+task.spawn(function()
+    while true do task.wait(0.5)
+        if isLucky and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
+            for _, o in pairs(workspace:GetDescendants()) do
+                if not isLucky then break end
+                if o.Name == "Main" and o.Parent and (o.Parent.Name == "Normal" or o.Parent.Name == "Rainbow") then
+                    local p = o:FindFirstChildOfClass("ProximityPrompt")
+                    if p then hrp.CFrame = o.CFrame * CFrame.new(0,3,0); p:InputHoldBegin(); task.wait(3.1); p:InputHoldEnd(); fireproximityprompt(p); break end
+                end
+            end
         end
     end
 end)
