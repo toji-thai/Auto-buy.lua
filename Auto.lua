@@ -1,7 +1,6 @@
-local TargetID = 123557829667240
-if game.GameId ~= TargetID and game.PlaceId ~= TargetID then 
-    warn("สคริปต์นี้ไม่รองรับเกมนี้ (ID ไม่ถูกต้อง)")
-    return 
+local UniverseID = 123557829667240
+if game.GameId ~= UniverseID then 
+    return -- ถ้าไม่ใช่เกมนี้ สคริปต์จะไม่ทำงานเลย
 end
 
 local player = game.Players.LocalPlayer
@@ -11,6 +10,7 @@ local isBuy, isLucky, isHop, targetPos = false, false, false, Vector3.new(9.3, 1
 
 local fName = "MinMenuConfig.json"
 
+-- ฟังก์ชัน Save/Load
 local function saveC()
     local data = {buy = isBuy, lucky = isLucky, hop = isHop}
     pcall(function() writefile(fName, Http:JSONEncode(data)) end)
@@ -22,10 +22,15 @@ local function loadC()
         if s then isBuy, isLucky, isHop = data.buy, data.lucky, data.hop end
     end
 end
-
 loadC()
 
-local sg = Instance.new("ScreenGui", player.PlayerGui); sg.Name = "MinMenu"; sg.ResetOnSpawn = false; sg.DisplayOrder = 999
+-- [[ สร้าง UI ใหม่ให้แสดงผลแน่นอน ]]
+local sg = Instance.new("ScreenGui")
+sg.Name = "MinMenuSystem"
+sg.Parent = player:WaitForChild("PlayerGui")
+sg.ResetOnSpawn = false
+sg.DisplayOrder = 999999 -- ดันให้อยู่หน้าสุดของทุกอย่าง
+
 local function drag(obj)
     local dStart, sPos, dragging
     obj.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging, dStart, sPos = true, i.Position, obj.Position end end)
@@ -33,32 +38,55 @@ local function drag(obj)
     obj.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 end
 
-local btn = Instance.new("TextButton", sg); btn.Size, btn.Position, btn.Text, btn.BackgroundColor3 = UDim2.new(0,60,0,60), UDim2.new(0,10,0,10), "MENU", Color3.new(0.2,0.2,0.2); Instance.new("UICorner", btn).CornerRadius = UDim.new(1,0); btn.ZIndex = 10; drag(btn)
-local frm = Instance.new("Frame", sg); frm.Size, frm.Position, frm.Visible, frm.BackgroundColor3 = UDim2.new(0,180,0,200), UDim2.new(0,10,0,80), false, Color3.new(0.1,0.1,0.1); Instance.new("UICorner", frm); frm.ZIndex = 9; drag(frm)
+-- ปุ่ม MENU (วงกลม)
+local btn = Instance.new("TextButton", sg)
+btn.Size, btn.Position = UDim2.new(0, 50, 0, 50), UDim2.new(0, 20, 0, 20)
+btn.Text = "MENU"
+btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+btn.TextColor3 = Color3.new(1, 1, 1)
+btn.Font = Enum.Font.SourceSansBold
+btn.TextSize = 14
+local corner = Instance.new("UICorner", btn)
+corner.CornerRadius = UDim.new(1, 0)
+drag(btn)
+
+-- หน้าต่าง Frame
+local frm = Instance.new("Frame", sg)
+frm.Size, frm.Position = UDim2.new(0, 180, 0, 210), UDim2.new(0, 20, 0, 80)
+frm.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frm.Visible = false
+Instance.new("UICorner", frm)
+drag(frm)
 
 local function createBtn(name, pos, val)
-    local b = Instance.new("TextButton", frm); b.Size, b.Position = UDim2.new(0.8,0,0,40), UDim2.new(0.1,0,0,pos)
-    b.Text = name..": "..(val and "ON" or "OFF"); b.BackgroundColor3 = val and Color3.new(0.2,0.7,0.2) or Color3.new(0.7,0.2,0.2); Instance.new("UICorner", b); b.ZIndex = 11; return b
+    local b = Instance.new("TextButton", frm)
+    b.Size, b.Position = UDim2.new(0.9, 0, 0, 45), UDim2.new(0.05, 0, 0, pos)
+    b.Text = name..": "..(val and "ON" or "OFF")
+    b.BackgroundColor3 = val and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    b.TextColor3 = Color3.new(1, 1, 1)
+    b.Font = Enum.Font.SourceSansBold
+    b.TextSize = 16
+    Instance.new("UICorner", b)
+    return b
 end
 
 local tB = createBtn("Auto Buy", 15, isBuy)
-local tL = createBtn("Lucky", 65, isLucky)
-local tH = createBtn("Auto Hop LB", 115, isHop)
+local tL = createBtn("Lucky", 75, isLucky)
+local tH = createBtn("Auto Hop LB", 135, isHop)
 
--- ระบบ Hop (15 วินาที)
+-- [[ ระบบ Hop 15 วินาที ]]
 local function Hop()
     if not isHop then return end
-    local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
-    local s, r = pcall(function() return Http:JSONDecode(game:HttpGet(url)) end)
-    if s and r.data then
-        for _, v in pairs(r.data) do
+    local s, r = pcall(function() return Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data end)
+    if s and r then
+        for _, v in pairs(r) do
             if v.playing < v.maxPlayers and v.id ~= game.JobId then
                 TS:TeleportToPlaceInstance(game.PlaceId, v.id, player)
                 return
             end
         end
     end
-    task.wait(3) if isHop then Hop() end
+    task.wait(2) if isHop then Hop() end
 end
 
 task.spawn(function()
@@ -70,11 +98,13 @@ task.spawn(function()
                 task.wait(1) 
             end
             if isHop then Hop() end
-        else tH.Text = "Auto Hop LB: OFF" end
+        else 
+            tH.Text = "Auto Hop LB: OFF" 
+        end
     end
 end)
 
--- Logic Farm
+-- [[ LOGIC FARM ]]
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky and player.Character then
@@ -107,11 +137,17 @@ task.spawn(function()
     end
 end)
 
+-- ปุ่มกดเปิด/ปิดเมนู
 btn.MouseButton1Click:Connect(function()
     frm.Visible = not frm.Visible
 end)
 
-local function update(b, v, n) b.Text = n..": "..(v and "ON" or "OFF"); b.BackgroundColor3 = v and Color3.new(0.2,0.7,0.2) or Color3.new(0.7,0.2,0.2); saveC() end
+local function update(b, v, n) 
+    b.Text = n..": "..(v and "ON" or "OFF")
+    b.BackgroundColor3 = v and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    saveC() 
+end
+
 tB.MouseButton1Click:Connect(function() isBuy = not isBuy; update(tB, isBuy, "Auto Buy") end)
 tL.MouseButton1Click:Connect(function() isLucky = not isLucky; update(tL, isLucky, "Lucky") end)
 tH.MouseButton1Click:Connect(function() isHop = not isHop; update(tH, isHop, "Auto Hop LB") end)
