@@ -77,15 +77,23 @@ local tW = createBtn("Auto Watering can", 250, isWater)
 local tG = createBtn("Auto Gift", 310, isGift)
 local tA = createBtn("Auto Accept", 370, isAccept)
 
--- [[ LOGIC: AUTO ACCEPT ]]
+-- [[ LOGIC: AUTO ACCEPT (แก้ไข: ไม่ปิดเอง) ]]
 task.spawn(function()
-    while true do task.wait(0.5)
+    while true do 
+        task.wait(0.5)
         if isAccept then
-            for _, v in pairs(player.PlayerGui:GetDescendants()) do
-                if v:IsA("TextButton") and (v.Text:lower():find("accept") or v.Name:lower():find("accept")) and v.Visible then
-                    pcall(function() for _, con in pairs(getconnections(v.MouseButton1Click)) do con:Fire() end end)
+            pcall(function()
+                for _, v in pairs(player.PlayerGui:GetDescendants()) do
+                    if v:IsA("TextButton") and v.Visible then
+                        local bText = v.Text:lower()
+                        if bText:find("accept") or v.Name:lower():find("accept") then
+                            for _, con in pairs(getconnections(v.MouseButton1Click)) do
+                                con:Fire()
+                            end
+                        end
+                    end
                 end
-            end
+            end)
         end
     end
 end)
@@ -99,7 +107,10 @@ task.spawn(function()
             local totems = {}
             if bp then for _, item in pairs(bp:GetChildren()) do if item.Name == "Totem" then table.insert(totems, item) end end end
             if #totems == 0 then
-                isGift = false; saveC()
+                isGift = false
+                tG.Text = "Auto Gift: OFF (Empty)"
+                tG.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+                saveC()
             elseif player.Character and player.Character:FindFirstChild("Humanoid") then
                 player.Character.Humanoid:EquipTool(totems[math.random(1, #totems)])
                 task.wait(0.1)
@@ -123,7 +134,7 @@ task.spawn(function()
             if bp and player.Character then
                 local tanks = {}
                 for _, item in pairs(bp:GetChildren()) do if string.find(item.Name, "XP") then table.insert(tanks, item) end end
-                if #tanks == 0 then isWater = false; saveC()
+                if #tanks == 0 then isWater = false; tW.Text = "Auto Watering can: OFF (Empty)"; tW.BackgroundColor3 = Color3.fromRGB(231, 76, 60); saveC()
                 elseif player.Character:FindFirstChild("Humanoid") then
                     player.Character.Humanoid:EquipTool(tanks[math.random(1, #tanks)])
                     task.wait(0.1)
@@ -191,4 +202,4 @@ tW.MouseButton1Click:Connect(function() isWater = not isWater; update(tW, isWate
 tG.MouseButton1Click:Connect(function() isGift = not isGift; update(tG, isGift, "Auto Gift") end)
 tA.MouseButton1Click:Connect(function() isAccept = not isAccept; update(tA, isAccept, "Auto Accept") end)
 
-print("Full Script Loaded with Scroll Menu!")
+print("Full Script Fixed: Auto Accept will stay ON until toggled.")
