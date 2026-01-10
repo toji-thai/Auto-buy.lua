@@ -1,5 +1,6 @@
+-- [[ CONFIG ]]
 local TargetID = 9228045253
-local targetGiftPlayer = "Bedanreker415" -- ชื่อคนที่จะส่งของขวัญให้
+local targetGiftPlayer = "tunthihakyi2" -- อัปเดตชื่อผู้รับเป็นชื่อนี้แล้ว
 
 if game.PlaceId ~= TargetID and game.GameId ~= TargetID then
     warn("Current ID: " .. game.PlaceId .. " does not match TargetID: " .. TargetID)
@@ -50,7 +51,7 @@ btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60); btn.TextColor3 = Color3.new(1
 Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8); drag(btn)
 
 local frm = Instance.new("Frame", sg)
-frm.Size, frm.Position, frm.Visible = UDim2.new(0, 200, 0, 460), UDim2.new(0, 50, 0, 90), false -- ขยายความสูงรองรับ 7 ปุ่ม
+frm.Size, frm.Position, frm.Visible = UDim2.new(0, 200, 0, 460), UDim2.new(0, 50, 0, 90), false 
 frm.BackgroundColor3 = Color3.fromRGB(35, 35, 35); frm.ZIndex = 90; Instance.new("UICorner", frm); drag(frm)
 
 local function createBtn(name, pos, val)
@@ -67,8 +68,8 @@ local tL = createBtn("Lucky", 75, isLucky)
 local tH = createBtn("Auto Hop LB", 135, isHop)
 local tS = createBtn("Send Item", 195, isSend)
 local tW = createBtn("Auto Watering can", 255, isWater)
-local tG = createBtn("Auto Gift", 315, isGift) -- ปุ่มที่ 6
-local tA = createBtn("Auto Accept", 375, isAccept) -- ปุ่มที่ 7
+local tG = createBtn("Auto Gift", 315, isGift)
+local tA = createBtn("Auto Accept", 375, isAccept)
 
 -- [[ LOGIC: AUTO ACCEPT (ปุ่มที่ 7) ]]
 task.spawn(function()
@@ -180,8 +181,7 @@ task.spawn(function()
     end
 end)
 
--- [[ ลูปนับถอยหลัง Hop, Auto Buy, Lucky Farm (คงเดิม) ]]
--- ... (โค้ดส่วน Hop, Buy, Lucky ยังอยู่ในระบบเหมือนเดิม) ...
+-- (ระบบที่เหลืออื่นๆ คงเดิม)
 
 btn.MouseButton1Click:Connect(function() frm.Visible = not frm.Visible end)
 local function update(b, v, n) 
@@ -195,4 +195,4 @@ tW.MouseButton1Click:Connect(function() isWater = not isWater; update(tW, isWate
 tG.MouseButton1Click:Connect(function() isGift = not isGift; update(tG, isGift, "Auto Gift") end)
 tA.MouseButton1Click:Connect(function() isAccept = not isAccept; update(tA, isAccept, "Auto Accept") end)
 
-print("Script V3 (7 Buttons) Fully Loaded!")
+print("Updated: Target player set to tunthihakyi2")
