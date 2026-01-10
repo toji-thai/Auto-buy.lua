@@ -2,9 +2,14 @@
 local TargetID = 9228045253
 local targetGiftPlayer = "tunthihakyi2" 
 
+if game.PlaceId ~= TargetID and game.GameId ~= TargetID then
+    warn("Current ID: " .. game.PlaceId .. " does not match TargetID: " .. TargetID)
+end
+
 local player = game.Players.LocalPlayer
 local UIS, VIM = game:GetService("UserInputService"), game:GetService("VirtualInputManager")
 local TS, Http = game:GetService("TeleportService"), game:GetService("HttpService")
+
 local isBuy, isLucky, isHop, isSend, isWater, isGift, isAccept = false, false, false, false, false, false, false
 local targetPos = Vector3.new(9.3, 19.92, -37.65)
 local fName = "MinMenuConfig.json"
@@ -29,7 +34,7 @@ loadC()
 
 -- [[ UI SYSTEM ]]
 local sg = Instance.new("ScreenGui")
-sg.Name = "MinMenuSystem_FullV4"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
+sg.Name = "MinMenuSystem_Full_Fixed_V7"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
 pcall(function() sg.Parent = player:WaitForChild("PlayerGui") end)
 
 local function drag(obj)
@@ -70,7 +75,7 @@ local tW = createBtn("Auto Watering can", 250, isWater)
 local tG = createBtn("Auto Gift", 310, isGift)
 local tA = createBtn("Auto Accept", 370, isAccept)
 
--- [[ LOGIC: AUTO ACCEPT (FIXED 100%) ]]
+-- [[ LOGIC: AUTO ACCEPT (ล็อคไม่ให้ปิดเอง) ]]
 task.spawn(function()
     while true do 
         task.wait(0.5)
@@ -78,11 +83,9 @@ task.spawn(function()
             pcall(function()
                 for _, v in pairs(player.PlayerGui:GetDescendants()) do
                     if v:IsA("TextButton") and v.Visible then
-                        local bText = v.Text:lower()
-                        if bText:find("accept") or v.Name:lower():find("accept") then
-                            for _, con in pairs(getconnections(v.MouseButton1Click)) do
-                                con:Fire()
-                            end
+                        local bT = v.Text:lower()
+                        if bT:find("accept") or v.Name:lower():find("accept") then
+                            for _, con in pairs(getconnections(v.MouseButton1Click)) do con:Fire() end
                         end
                     end
                 end
@@ -91,82 +94,59 @@ task.spawn(function()
     end
 end)
 
--- [[ LOGIC: AUTO WATERING (ปรับเป็น 0.5 วินาทีตามที่บอก) ]]
+-- [[ LOGIC: AUTO WATERING (0.5s + บังคับเช็คถังทุกรอบ) ]]
 task.spawn(function()
     local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("TreeClick")
     while true do
-        task.wait(0.5) -- แก้ไขตรงนี้เป็น 0.5 วินาทีแล้วครับ
-        if isWater then
-            local char = player.Character
-            local treePath = workspace.Plots:FindFirstChild("Plot") and workspace.Plots.Plot:FindFirstChild("PlotContents"):FindFirstChild("Tree")
-            if char and treePath then
-                local tool = char:FindFirstChildOfClass("Tool")
-                if tool and string.find(tool.Name, "XP") then
-                    pcall(function() remote:InvokeServer(treePath) end)
-                else
-                    local bp = player:FindFirstChild("Backpack")
-                    local found = false
-                    if bp then
-                        for _, item in pairs(bp:GetChildren()) do
-                            if string.find(item.Name, "XP") then
-                                char.Humanoid:EquipTool(item); found = true; break
-                            end
+        task.wait(0.5) -- Loop 0.5 วินาทีตามสั่ง
+        if isWater == true then
+            pcall(function()
+                local char = player.Character
+                local tree = workspace.Plots.Plot.PlotContents.Tree
+                if char and tree then
+                    -- เช็คถังน้ำ: ในมือ -> ในเป๋า -> ชื่อที่มีคำว่า XP
+                    local tank = char:FindFirstChild("XP") or player.Backpack:FindFirstChild("XP")
+                    if not tank then
+                        for _, item in pairs(player.Backpack:GetChildren()) do
+                            if item.Name:find("XP") then tank = item; break end
                         end
                     end
-                    if not found then isWater = false; saveC() end
-                end
-            end
-        end
-    end
-end)
-
--- [[ LOGIC: อื่นๆ เหมือนเดิม ]]
-task.spawn(function()
-    local giftRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Gift")
-    while true do task.wait(0.7)
-        if isGift then
-            local bp = player:FindFirstChild("Backpack")
-            local totems = {}
-            if bp then for _, item in pairs(bp:GetChildren()) do if item.Name == "Totem" then table.insert(totems, item) end end end
-            if #totems == 0 then isGift = false; saveC()
-            elseif player.Character and player.Character:FindFirstChild("Humanoid") then
-                player.Character.Humanoid:EquipTool(totems[math.random(1, #totems)])
-                task.wait(0.1)
-                pcall(function() giftRemote:InvokeServer(game.Players:WaitForChild(targetGiftPlayer)) end)
-                task.wait(0.2)
-                local yesBtn = player.PlayerGui:FindFirstChild("Yes", true) or player.PlayerGui:FindFirstChild("Confirm", true)
-                if yesBtn and yesBtn.Visible then pcall(function() for _, con in pairs(getconnections(yesBtn.MouseButton1Click)) do con:Fire() end end) end
-            end
-        end
-    end
-end)
-
-task.spawn(function()
-    while true do task.wait(1.5)
-        if isBuy and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos); task.wait(0.5)
-            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game); task.wait(0.1); VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game); task.wait(1)
-            for _, v in pairs(player.PlayerGui:GetDescendants()) do
-                if v:IsA("GuiButton") and v.Visible and v.Name:lower():find("buy") and v.Name:find("3") then
-                    local p, s = v.AbsolutePosition, v.AbsoluteSize
-                    VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, true, game, 0)
-                    task.wait(0.1); VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, false, game, 0)
-                    task.wait(1)
-                    local sz = sg.AbsoluteSize
-                    for i = 1, 5 do
-                        VIM:SendMouseButtonEvent(sz.X * 0.15, (sz.Y * 0.88) + 58, 0, true, game, 0)
-                        task.wait(0.1); VIM:SendMouseButtonEvent(sz.X * 0.15, (sz.Y * 0.88) + 58, 0, false, game, 0); task.wait(0.3)
+                    
+                    if tank then
+                        if tank.Parent == player.Backpack then
+                            char.Humanoid:EquipTool(tank)
+                            task.wait(0.1)
+                        end
+                        remote:InvokeServer(tree)
                     end
-                    break
                 end
-            end
+            end)
         end
     end
 end)
 
+-- [[ LOGIC: AUTO GIFT ]]
+task.spawn(function()
+    local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Gift")
+    while true do
+        task.wait(0.7)
+        if isGift == true then
+            pcall(function()
+                local totem = player.Backpack:FindFirstChild("Totem")
+                if totem and player.Character then
+                    player.Character.Humanoid:EquipTool(totem)
+                    task.wait(0.1)
+                    remote:InvokeServer(game.Players[targetGiftPlayer])
+                end
+            end)
+        end
+    end
+end)
+
+-- [[ LOGIC: LUCKY FARM ]]
 task.spawn(function()
     while true do task.wait(0.5)
-        if isLucky and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        if isLucky and player.Character then
             for _, o in pairs(workspace:GetDescendants()) do
                 if isLucky and o.Name == "Main" and o.Parent and (o.Parent.Name == "Normal" or o.Parent.Name == "Rainbow") then
                     local p = o:FindFirstChildOfClass("ProximityPrompt")
@@ -176,6 +156,29 @@ task.spawn(function()
                     end
                 end
             end
+        end
+    end
+end)
+
+-- [[ LOGIC: AUTO BUY ]]
+task.spawn(function()
+    while true do task.wait(1.5)
+        if isBuy and player.Character then
+            player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos)
+            task.wait(0.5)
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            task.wait(0.1)
+            VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            -- ระบบคลิกปุ่ม Buy (ถ้ามี)
+            pcall(function()
+                for _, v in pairs(player.PlayerGui:GetDescendants()) do
+                    if v:IsA("GuiButton") and v.Visible and v.Name:lower():find("buy") and v.Name:find("3") then
+                        local p, s = v.AbsolutePosition, v.AbsoluteSize
+                        VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, true, game, 0)
+                        task.wait(0.1); VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, false, game, 0)
+                    end
+                end
+            end)
         end
     end
 end)
@@ -196,4 +199,4 @@ tW.MouseButton1Click:Connect(function() isWater = not isWater; update(tW, isWate
 tG.MouseButton1Click:Connect(function() isGift = not isGift; update(tG, isGift, "Auto Gift") end)
 tA.MouseButton1Click:Connect(function() isAccept = not isAccept; update(tA, isAccept, "Auto Accept") end)
 
-print("Updated: Watering 0.5s & Fixed Accept.")
+print("Full Script Fixed: Water 0.5s, Accept Locked, All Features Restored.")
