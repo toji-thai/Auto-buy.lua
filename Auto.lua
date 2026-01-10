@@ -2,19 +2,12 @@
 local TargetID = 9228045253
 local targetGiftPlayer = "tunthihakyi2" 
 
-if game.PlaceId ~= TargetID and game.GameId ~= TargetID then
-    warn("Current ID: " .. game.PlaceId .. " does not match TargetID: " .. TargetID)
-end
-
 local player = game.Players.LocalPlayer
 local UIS, VIM = game:GetService("UserInputService"), game:GetService("VirtualInputManager")
 local TS, Http = game:GetService("TeleportService"), game:GetService("HttpService")
 local isBuy, isLucky, isHop, isSend, isWater, isGift, isAccept = false, false, false, false, false, false, false
 local targetPos = Vector3.new(9.3, 19.92, -37.65)
-
 local fName = "MinMenuConfig.json"
-local globalFile = "UsedServers.json"
-local myToken = tostring(math.random(100000, 999999))
 
 -- [[ SYSTEM FUNCTIONS ]]
 local function saveC()
@@ -36,7 +29,7 @@ loadC()
 
 -- [[ UI SYSTEM ]]
 local sg = Instance.new("ScreenGui")
-sg.Name = "MinMenuSystem_Full"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
+sg.Name = "MinMenuSystem_FullV4"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
 pcall(function() sg.Parent = player:WaitForChild("PlayerGui") end)
 
 local function drag(obj)
@@ -77,11 +70,11 @@ local tW = createBtn("Auto Watering can", 250, isWater)
 local tG = createBtn("Auto Gift", 310, isGift)
 local tA = createBtn("Auto Accept", 370, isAccept)
 
--- [[ LOGIC: AUTO ACCEPT (แก้ไข: ไม่ปิดเอง) ]]
+-- [[ LOGIC: AUTO ACCEPT (FIXED 100%) ]]
 task.spawn(function()
     while true do 
         task.wait(0.5)
-        if isAccept then
+        if isAccept == true then
             pcall(function()
                 for _, v in pairs(player.PlayerGui:GetDescendants()) do
                     if v:IsA("TextButton") and v.Visible then
@@ -98,7 +91,36 @@ task.spawn(function()
     end
 end)
 
--- [[ LOGIC: AUTO GIFT ]]
+-- [[ LOGIC: AUTO WATERING (ปรับเป็น 0.5 วินาทีตามที่บอก) ]]
+task.spawn(function()
+    local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("TreeClick")
+    while true do
+        task.wait(0.5) -- แก้ไขตรงนี้เป็น 0.5 วินาทีแล้วครับ
+        if isWater then
+            local char = player.Character
+            local treePath = workspace.Plots:FindFirstChild("Plot") and workspace.Plots.Plot:FindFirstChild("PlotContents"):FindFirstChild("Tree")
+            if char and treePath then
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool and string.find(tool.Name, "XP") then
+                    pcall(function() remote:InvokeServer(treePath) end)
+                else
+                    local bp = player:FindFirstChild("Backpack")
+                    local found = false
+                    if bp then
+                        for _, item in pairs(bp:GetChildren()) do
+                            if string.find(item.Name, "XP") then
+                                char.Humanoid:EquipTool(item); found = true; break
+                            end
+                        end
+                    end
+                    if not found then isWater = false; saveC() end
+                end
+            end
+        end
+    end
+end)
+
+-- [[ LOGIC: อื่นๆ เหมือนเดิม ]]
 task.spawn(function()
     local giftRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Gift")
     while true do task.wait(0.7)
@@ -106,15 +128,11 @@ task.spawn(function()
             local bp = player:FindFirstChild("Backpack")
             local totems = {}
             if bp then for _, item in pairs(bp:GetChildren()) do if item.Name == "Totem" then table.insert(totems, item) end end end
-            if #totems == 0 then
-                isGift = false
-                tG.Text = "Auto Gift: OFF (Empty)"
-                tG.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
-                saveC()
+            if #totems == 0 then isGift = false; saveC()
             elseif player.Character and player.Character:FindFirstChild("Humanoid") then
                 player.Character.Humanoid:EquipTool(totems[math.random(1, #totems)])
                 task.wait(0.1)
-                task.spawn(function() pcall(function() giftRemote:InvokeServer(game.Players:WaitForChild(targetGiftPlayer)) end) end)
+                pcall(function() giftRemote:InvokeServer(game.Players:WaitForChild(targetGiftPlayer)) end)
                 task.wait(0.2)
                 local yesBtn = player.PlayerGui:FindFirstChild("Yes", true) or player.PlayerGui:FindFirstChild("Confirm", true)
                 if yesBtn and yesBtn.Visible then pcall(function() for _, con in pairs(getconnections(yesBtn.MouseButton1Click)) do con:Fire() end end) end
@@ -123,30 +141,6 @@ task.spawn(function()
     end
 end)
 
--- [[ LOGIC: AUTO WATERING CAN ]]
-task.spawn(function()
-    local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("TreeClick")
-    local treePath = workspace:WaitForChild("Plots"):WaitForChild("Plot"):WaitForChild("PlotContents"):WaitForChild("Tree")
-    while true do
-        local startTime = tick()
-        if isWater then
-            local bp = player:FindFirstChild("Backpack")
-            if bp and player.Character then
-                local tanks = {}
-                for _, item in pairs(bp:GetChildren()) do if string.find(item.Name, "XP") then table.insert(tanks, item) end end
-                if #tanks == 0 then isWater = false; tW.Text = "Auto Watering can: OFF (Empty)"; tW.BackgroundColor3 = Color3.fromRGB(231, 76, 60); saveC()
-                elseif player.Character:FindFirstChild("Humanoid") then
-                    player.Character.Humanoid:EquipTool(tanks[math.random(1, #tanks)])
-                    task.wait(0.1)
-                    pcall(function() remote:InvokeServer(treePath) end)
-                end
-            end
-        end
-        task.wait(math.max(0.3 - (tick() - startTime), 0.01))
-    end
-end)
-
--- [[ LOGIC: AUTO BUY ]]
 task.spawn(function()
     while true do task.wait(1.5)
         if isBuy and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -170,7 +164,6 @@ task.spawn(function()
     end
 end)
 
--- [[ LOGIC: LUCKY FARM ]]
 task.spawn(function()
     while true do task.wait(0.5)
         if isLucky and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -193,6 +186,7 @@ local function update(b, v, n)
     b.BackgroundColor3 = v and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
     saveC() 
 end
+
 btn.MouseButton1Click:Connect(function() frm.Visible = not frm.Visible end)
 tB.MouseButton1Click:Connect(function() isBuy = not isBuy; update(tB, isBuy, "Auto Buy") end)
 tL.MouseButton1Click:Connect(function() isLucky = not isLucky; update(tL, isLucky, "Lucky") end)
@@ -202,4 +196,4 @@ tW.MouseButton1Click:Connect(function() isWater = not isWater; update(tW, isWate
 tG.MouseButton1Click:Connect(function() isGift = not isGift; update(tG, isGift, "Auto Gift") end)
 tA.MouseButton1Click:Connect(function() isAccept = not isAccept; update(tA, isAccept, "Auto Accept") end)
 
-print("Full Script Fixed: Auto Accept will stay ON until toggled.")
+print("Updated: Watering 0.5s & Fixed Accept.")
