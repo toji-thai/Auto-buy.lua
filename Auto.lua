@@ -1,7 +1,6 @@
 -- [[ CONFIG ]]
 local TargetID = 9228045253
 
--- เช็ค ID เกม (ถ้าไม่ตรงจะแจ้งเตือนใน Console แต่ยังให้รันต่อเพื่อดู UI)
 if game.PlaceId ~= TargetID and game.GameId ~= TargetID then
     warn("Current ID: " .. game.PlaceId .. " does not match TargetID: " .. TargetID)
 end
@@ -9,7 +8,7 @@ end
 local player = game.Players.LocalPlayer
 local UIS, VIM = game:GetService("UserInputService"), game:GetService("VirtualInputManager")
 local TS, Http = game:GetService("TeleportService"), game:GetService("HttpService")
-local isBuy, isLucky, isHop, isSend = false, false, false, false
+local isBuy, isLucky, isHop, isSend, isWater = false, false, false, false, false -- เพิ่ม isWater
 local targetPos = Vector3.new(9.3, 19.92, -37.65)
 
 local fName = "MinMenuConfig.json"
@@ -39,28 +38,22 @@ pcall(markServerUsed)
 
 local function saveC()
     if not writefile then return end
-    local data = {buy = isBuy, lucky = isLucky, hop = isHop, send = isSend}
+    local data = {buy = isBuy, lucky = isLucky, hop = isHop, send = isSend, water = isWater}
     pcall(function() writefile(fName, Http:JSONEncode(data)) end)
 end
 
 local function loadC()
     if isfile and isfile(fName) then
         local s, data = pcall(function() return Http:JSONDecode(readfile(fName)) end)
-        if s then isBuy, isLucky, isHop, isSend = data.buy, data.lucky, data.hop, (data.send or false) end
+        if s then isBuy, isLucky, isHop, isSend, isWater = data.buy, data.lucky, data.hop, (data.send or false), (data.water or false) end
     end
 end
 loadC()
 
 -- [[ UI SYSTEM ]]
 local sg = Instance.new("ScreenGui")
-sg.Name = "MinMenuSystem"
-sg.ResetOnSpawn = false
-sg.DisplayOrder = 100000
--- ใช้ pcall เพื่อให้มั่นใจว่า UI จะถูกยัดลง PlayerGui แน่นอน
-local success, err = pcall(function()
-    sg.Parent = player:WaitForChild("PlayerGui")
-end)
-if not success then warn("Failed to parent UI: " .. err) end
+sg.Name = "MinMenuSystem"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
+pcall(function() sg.Parent = player:WaitForChild("PlayerGui") end)
 
 local function drag(obj)
     local dStart, sPos, dragging
@@ -75,7 +68,7 @@ btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60); btn.TextColor3 = Color3.new(1
 Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8); drag(btn)
 
 local frm = Instance.new("Frame", sg)
-frm.Size, frm.Position, frm.Visible = UDim2.new(0, 200, 0, 280), UDim2.new(0, 50, 0, 90), false
+frm.Size, frm.Position, frm.Visible = UDim2.new(0, 200, 0, 340), UDim2.new(0, 50, 0, 90), false -- ขยายความสูงเป็น 340
 frm.BackgroundColor3 = Color3.fromRGB(35, 35, 35); frm.ZIndex = 90; Instance.new("UICorner", frm); drag(frm)
 
 local function createBtn(name, pos, val)
@@ -91,6 +84,44 @@ local tB = createBtn("Auto Buy", 15, isBuy)
 local tL = createBtn("Lucky", 75, isLucky)
 local tH = createBtn("Auto Hop LB", 135, isHop)
 local tS = createBtn("Send Item", 195, isSend)
+local tW = createBtn("Auto Watering can", 255, isWater) -- ปุ่มที่ 5
+
+-- [[ LOGIC: AUTO WATERING CAN ]]
+task.spawn(function()
+    local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("TreeClick")
+    local treePath = workspace:WaitForChild("Plots"):WaitForChild("Plot"):WaitForChild("PlotContents"):WaitForChild("Tree")
+    
+    while true do
+        local startTime = tick()
+        if isWater then
+            local backpack = player:FindFirstChild("Backpack")
+            local char = player.Character
+            
+            if backpack and char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local tanks = {}
+                for _, item in pairs(backpack:GetChildren()) do
+                    if string.find(item.Name, "XP") then table.insert(tanks, item) end
+                end
+
+                if #tanks == 0 then
+                    isWater = false
+                    tW.Text = "Auto Watering can: OFF (Empty)"
+                    tW.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+                    saveC()
+                elseif hum then
+                    local randomTank = tanks[math.random(1, #tanks)]
+                    hum:EquipTool(randomTank)
+                    task.wait(0.1)
+                    task.spawn(function() pcall(function() remote:InvokeServer(treePath) end) end)
+                end
+            end
+        end
+        local elapsed = tick() - startTime
+        local remaining = 0.3 - elapsed
+        task.wait(remaining > 0 and remaining or 0.01)
+    end
+end)
 
 -- [[ LOGIC: SEND ITEM ]]
 task.spawn(function()
@@ -201,5 +232,6 @@ tB.MouseButton1Click:Connect(function() isBuy = not isBuy; update(tB, isBuy, "Au
 tL.MouseButton1Click:Connect(function() isLucky = not isLucky; update(tL, isLucky, "Lucky") end)
 tH.MouseButton1Click:Connect(function() isHop = not isHop; update(tH, isHop, "Auto Hop LB") end)
 tS.MouseButton1Click:Connect(function() isSend = not isSend; update(tS, isSend, "Send Item") end)
+tW.MouseButton1Click:Connect(function() isWater = not isWater; update(tW, isWater, "Auto Watering can") end)
 
 print("Script Fully Loaded!")
