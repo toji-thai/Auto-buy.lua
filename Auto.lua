@@ -146,7 +146,7 @@ task.spawn(function()
                         VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, false, game, 0)
                         task.wait(0.1) -- ดีเลย์ระหว่างการกดแต่ละครั้ง
                     end
-                    task.wait(2)
+                    task.wait(2.5)
                 end
             end
         end
