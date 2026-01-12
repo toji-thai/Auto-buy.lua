@@ -139,12 +139,12 @@ task.spawn(function()
                     local p = v.AbsolutePosition
                     local s = v.AbsoluteSize
                     -- วนลูปกด 5 ครั้ง
-                    for i = 1, 5 do
+                    for i = 1, 7 do
                         if not isBuy then break end
                         VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, true, game, 0)
                         task.wait(0.1)
                         VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, false, game, 0)
-                        task.wait(0.15) -- ดีเลย์ระหว่างการกดแต่ละครั้ง
+                        task.wait(0.1) -- ดีเลย์ระหว่างการกดแต่ละครั้ง
                     end
                     task.wait(2)
                 end
