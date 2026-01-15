@@ -11,7 +11,7 @@ local fName = "MinMenuConfig.json"
 local globalFile = "UsedServers.json"
 local myToken = tostring(math.random(100000, 999999))
 
--- ระบบจัดการไฟล์กลาง (กันรหัสซ้ำ)
+-- ระบบจัดการไฟล์กลาง (กันรหัสซ้ำ/กัน 4 ไอดีเจอกัน)
 local function getUsedServers()
     if isfile(globalFile) then
         local s, res = pcall(function() return Http:JSONDecode(readfile(globalFile)) end)
@@ -47,19 +47,25 @@ loadC()
 -- [[ UI SYSTEM ]]
 local sg = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 sg.Name = "MinMenuSystem"; sg.ResetOnSpawn = false; sg.DisplayOrder = 100000
+
 local function drag(obj)
     local dStart, sPos, dragging
     obj.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging, dStart, sPos = true, i.Position, obj.Position end end)
     UIS.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local d = i.Position - dStart; obj.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X, sPos.Y.Scale, sPos.Y.Offset + d.Y) end end)
     obj.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 end
+
+-- ปุ่ม OPEN (ย้ายไปขวาบน)
 local btn = Instance.new("TextButton", sg)
-btn.Size, btn.Position, btn.Text = UDim2.new(0, 60, 0, 60), UDim2.new(0, 20, 0, 20), "OPEN"
+btn.Size, btn.Position, btn.Text = UDim2.new(0, 60, 0, 60), UDim2.new(1, -80, 0, 20), "OPEN"
 btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60); btn.TextColor3 = Color3.new(1, 1, 1); btn.Font = Enum.Font.SourceSansBold; btn.TextSize = 18; btn.ZIndex = 100
 Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0); drag(btn)
+
+-- เมนูหลัก (ย้ายไปซ้ายล่าง)
 local frm = Instance.new("Frame", sg)
-frm.Size, frm.Position, frm.Visible = UDim2.new(0, 200, 0, 220), UDim2.new(0, 20, 0, 90), false
+frm.Size, frm.Position, frm.Visible = UDim2.new(0, 200, 0, 220), UDim2.new(0, 20, 1, -240), false
 frm.BackgroundColor3 = Color3.fromRGB(35, 35, 35); frm.ZIndex = 90; Instance.new("UICorner", frm); drag(frm)
+
 local function createBtn(name, pos, val)
     local b = Instance.new("TextButton", frm)
     b.Size, b.Position = UDim2.new(0.9, 0, 0, 50), UDim2.new(0.05, 0, 0, pos)
@@ -70,7 +76,7 @@ local function createBtn(name, pos, val)
 end
 local tB = createBtn("Auto Buy", 15, isBuy); local tL = createBtn("Lucky", 80, isLucky); local tH = createBtn("Auto Hop LB", 145, isHop)
 
--- [[ ระบบ Hop ทุก 25 วินาที + ป้องกัน 4 ไอดีเจอกัน ]]
+-- [[ ระบบ Hop ทุก 25 วินาที ]]
 local function Hop()
     if not isHop then return end
     markServerUsed()
@@ -128,7 +134,7 @@ task.spawn(function()
     end
 end)
 
--- [[ แก้ไขระบบ AUTO BUY ให้กด 5 ครั้ง ]]
+-- [[ ระบบ AUTO BUY กด 7 ครั้งตามโค้ดเดิม ]]
 task.spawn(function()
     while true do task.wait(1)
         if isBuy and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -138,13 +144,12 @@ task.spawn(function()
                 if v:IsA("GuiButton") and v.Visible and v.Name:lower():find("buy") and v.Name:find("3") then
                     local p = v.AbsolutePosition
                     local s = v.AbsoluteSize
-                    -- วนลูปกด 5 ครั้ง
                     for i = 1, 7 do
                         if not isBuy then break end
                         VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, true, game, 0)
                         task.wait(0.1)
                         VIM:SendMouseButtonEvent(p.X + s.X/2, p.Y + s.Y/2 + 58, 0, false, game, 0)
-                        task.wait(0.1) -- ดีเลย์ระหว่างการกดแต่ละครั้ง
+                        task.wait(0.1)
                     end
                     task.wait(2.5)
                 end
